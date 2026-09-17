@@ -16,7 +16,6 @@ from dotenv import load_dotenv
 
 load_dotenv()
 TOKEN = os.getenv("DISCORD_TOKEN")
-
 if not TOKEN:
     raise RuntimeError("DISCORD_TOKEN não configurado")
 
@@ -74,11 +73,10 @@ def totp(secret: str, timestamp: int | None = None) -> tuple[str, int]:
     offset = digest[-1] & 0x0F
     binary = struct.unpack(">I", digest[offset:offset + 4])[0] & 0x7FFFFFFF
     code = str(binary % 1_000_000).zfill(6)
-    remaining = 30 - (now % 30)
-    return code, remaining
+    return code, 30 - (now % 30)
 
 
-class TOTPModal(discord.ui.Modal, title="Configurar TOTP"):
+class TOTPModal(discord.ui.Modal, title="Gerar código 2FA"):
     secret = discord.ui.TextInput(
         label="Chave secreta Base32",
         placeholder="Ex.: JBSWY3DPEHPK3PXP",
@@ -94,12 +92,69 @@ class TOTPModal(discord.ui.Modal, title="Configurar TOTP"):
             await interaction.response.send_message(f"Chave inválida: {exc}", ephemeral=True)
             return
 
-        # A chave não é persistida, logada ou enviada a serviço externo.
         await interaction.response.send_message(
-            f"Código TOTP: **{code}**\nExpira em aproximadamente **{remaining}s**.\n\n"
+            f"Código 2FA: **{code}**\nExpira em aproximadamente **{remaining}s**.\n\n"
             "A chave foi usada somente nesta resposta e não foi armazenada pelo bot.",
             ephemeral=True,
         )
+
+
+class Generate2FAButton(discord.ui.Button):
+    def __init__(self):
+        super().__init__(
+            label="GERAR 2FA",
+            style=discord.ButtonStyle.success,
+            custom_id="feedbacks_2fa:generate",
+        )
+
+    async def callback(self, interaction: discord.Interaction):
+        await interaction.response.send_modal(TOTPModal())
+
+
+class Generate2FAView(discord.ui.View):
+    def __init__(self):
+        super().__init__(timeout=None)
+        self.add_item(Generate2FAButton())
+
+
+class Configure2FAModal(discord.ui.Modal, title="Configurar painel 2FA"):
+    description = discord.ui.TextInput(
+        label="Descrição do painel",
+        placeholder="Clique no botão abaixo para gerar seu código.",
+        style=discord.TextStyle.paragraph,
+        required=False,
+        max_length=4000,
+    )
+    button_name = discord.ui.TextInput(
+        label="Nome do botão",
+        placeholder="GERAR 2FA",
+        required=False,
+        max_length=80,
+    )
+
+    def __init__(self, channel: discord.abc.Messageable):
+        super().__init__()
+        self.channel = channel
+
+    async def on_submit(self, interaction: discord.Interaction):
+        description = str(self.description).strip() or "Clique no botão abaixo para gerar seu código 2FA."
+        button_name = str(self.button_name).strip() or "GERAR 2FA"
+        if len(button_name) > 80:
+            button_name = button_name[:80]
+
+        embed = discord.Embed(
+            title="🔐 Configuração 2FA",
+            description=description,
+            color=discord.Color.green(),
+        )
+        embed.set_footer(text="A resposta do código é privada. Não compartilhe sua chave secreta.")
+
+        view = Generate2FAView()
+        view.children[0].label = button_name
+        await interaction.response.send_message(
+            "Painel 2FA publicado neste canal.", ephemeral=True
+        )
+        await self.channel.send(embed=embed, view=view)
 
 
 class FeedbackModal(discord.ui.Modal, title="Criar card de feedback"):
@@ -119,7 +174,6 @@ class FeedbackModal(discord.ui.Modal, title="Criar card de feedback"):
 
         shown_date = str(self.data_hora).strip() or datetime.now().strftime("%d/%m - %H:%M")
         shown_author = str(self.autor).strip() or interaction.user.display_name
-
         embed = discord.Embed(color=0x111318)
         embed.set_author(name=f"{shown_author}   •   {shown_date}")
         embed.title = "🟢 Feedback recebido"
@@ -140,6 +194,7 @@ class FeedbackModal(discord.ui.Modal, title="Criar card de feedback"):
 
 @bot.event
 async def on_ready():
+    bot.add_view(Generate2FAView())
     try:
         synced = await bot.tree.sync()
         print(f"Online como {bot.user} — {len(synced)} comandos sincronizados")
@@ -153,9 +208,10 @@ async def feedback(interaction: discord.Interaction):
     await interaction.response.send_modal(FeedbackModal())
 
 
-@bot.tree.command(name="configurar2fa", description="Gera um código TOTP local em resposta privada")
+@bot.tree.command(name="configurar2fa", description="Publica um painel 2FA no canal atual")
+@app_commands.checks.has_permissions(manage_messages=True)
 async def configurar2fa(interaction: discord.Interaction):
-    await interaction.response.send_modal(TOTPModal())
+    await interaction.response.send_modal(Configure2FAModal(interaction.channel))
 
 
 @bot.tree.command(name="health", description="Verifica se o bot está online")
@@ -163,12 +219,13 @@ async def health(interaction: discord.Interaction):
     await interaction.response.send_message("online", ephemeral=True)
 
 
+@configurar2fa.error
 @feedback.error
-async def feedback_error(interaction: discord.Interaction, error: app_commands.AppCommandError):
+async def command_error(interaction: discord.Interaction, error: app_commands.AppCommandError):
     if isinstance(error, app_commands.MissingPermissions):
         message = "Você precisa da permissão Gerenciar mensagens para usar este comando."
     else:
-        message = "Não foi possível abrir o formulário."
+        message = "Não foi possível executar o comando."
     if interaction.response.is_done():
         await interaction.followup.send(message, ephemeral=True)
     else:
