@@ -17,7 +17,7 @@ O bot precisa do escopo `bot` e `applications.commands`. Para usar `/feedback`, 
 
 ## Deploy no Render
 
-Crie um serviço do tipo Worker usando este repositório. O `render.yaml` já define o comando de instalação e inicialização. No painel do Render, adicione `DISCORD_TOKEN` como variável secreta. Nunca publique esse valor no GitHub.
+Crie um **New Web Service** usando este repositório. Use `pip install -r requirements.txt` no Build Command e `python bot.py` no Start Command. O bot abre automaticamente a porta fornecida pelo Render em `PORT` e responde em `/health`. No painel do Render, adicione `DISCORD_TOKEN` como variável secreta. Nunca publique esse valor no GitHub.
 
 ## Segurança
 

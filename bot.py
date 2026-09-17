@@ -3,9 +3,11 @@ import base64
 import hashlib
 import hmac
 import struct
+import threading
 import time
 from datetime import datetime
 from decimal import Decimal, InvalidOperation
+from http.server import BaseHTTPRequestHandler, HTTPServer
 
 import discord
 from discord import app_commands
@@ -20,6 +22,29 @@ if not TOKEN:
 
 intents = discord.Intents.default()
 bot = commands.Bot(command_prefix="!", intents=intents)
+
+
+class HealthHandler(BaseHTTPRequestHandler):
+    def do_GET(self):
+        if self.path in ("/", "/health"):
+            body = b"feedbacks-2fa online"
+            self.send_response(200)
+            self.send_header("Content-Type", "text/plain; charset=utf-8")
+            self.send_header("Content-Length", str(len(body)))
+            self.end_headers()
+            self.wfile.write(body)
+            return
+        self.send_response(404)
+        self.end_headers()
+
+    def log_message(self, *_args):
+        return
+
+
+def start_health_server():
+    port = int(os.getenv("PORT", "10000"))
+    server = HTTPServer(("0.0.0.0", port), HealthHandler)
+    threading.Thread(target=server.serve_forever, daemon=True).start()
 
 
 def money(value: str) -> str:
@@ -150,4 +175,5 @@ async def feedback_error(interaction: discord.Interaction, error: app_commands.A
         await interaction.response.send_message(message, ephemeral=True)
 
 
+start_health_server()
 bot.run(TOKEN)
