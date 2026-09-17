@@ -24,13 +24,26 @@ bot = commands.Bot(command_prefix="!", intents=intents)
 
 
 class HealthHandler(BaseHTTPRequestHandler):
+    def _is_health_path(self):
+        return self.path in ("/", "/health")
+
+    def _send_health_headers(self, body: bytes):
+        self.send_response(200)
+        self.send_header("Content-Type", "text/plain; charset=utf-8")
+        self.send_header("Content-Length", str(len(body)))
+        self.end_headers()
+
+    def do_HEAD(self):
+        if self._is_health_path():
+            self._send_health_headers(b"feedbacks-2fa online")
+            return
+        self.send_response(404)
+        self.end_headers()
+
     def do_GET(self):
-        if self.path in ("/", "/health"):
+        if self._is_health_path():
             body = b"feedbacks-2fa online"
-            self.send_response(200)
-            self.send_header("Content-Type", "text/plain; charset=utf-8")
-            self.send_header("Content-Length", str(len(body)))
-            self.end_headers()
+            self._send_health_headers(body)
             self.wfile.write(body)
             return
         self.send_response(404)
