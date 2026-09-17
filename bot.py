@@ -178,15 +178,15 @@ class FeedbackModal(discord.ui.Modal, title="Criar card de feedback"):
         embed.set_author(name=f"{shown_author}   •   {shown_date}")
         embed.title = "🟢 Feedback recebido"
         embed.description = (
-            "**ATIVIDADE FICTÍCIA / SIMULAÇÃO**\n\n"
+            "**PEDIDO APROVADO E ENTREGUE**\n\n"
             "**ITEM / EXPERIÊNCIA**\n"
             f"{self.produto}\n\n"
             "**SUBTOTAL**\n"
             f"`{subtotal}`\n\n"
             "━━━━━━━━━━━━━━━━━━━━\n"
-            "**VALOR INFORMADO**\n"
+            "**VALOR PAGO**\n"
             f"# {pago}\n\n"
-            "_Card visual para testes e estudos; não representa uma transação._"
+            "_AURA STORE._"
         )
         embed.set_footer(text=f"Feedback visual • solicitado por {interaction.user.display_name}")
         await interaction.response.send_message(embed=embed)
