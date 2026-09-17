@@ -151,10 +151,7 @@ class Configure2FAModal(discord.ui.Modal, title="Configurar painel 2FA"):
 
         view = Generate2FAView()
         view.children[0].label = button_name
-        await interaction.response.send_message(
-            "Painel 2FA publicado neste canal.", ephemeral=True
-        )
-        await self.channel.send(embed=embed, view=view)
+        await interaction.response.send_message(embed=embed, view=view)
 
 
 class FeedbackModal(discord.ui.Modal, title="Criar card de feedback"):
@@ -178,17 +175,17 @@ class FeedbackModal(discord.ui.Modal, title="Criar card de feedback"):
         embed.set_author(name=f"{shown_author}   •   {shown_date}")
         embed.title = "🟢 Feedback recebido"
         embed.description = (
-            "**PEDIDO APROVADO E ENTREGUE**\n\n"
+            "**ATIVIDADE FICTÍCIA / SIMULAÇÃO**\n\n"
             "**ITEM / EXPERIÊNCIA**\n"
             f"{self.produto}\n\n"
             "**SUBTOTAL**\n"
             f"`{subtotal}`\n\n"
             "━━━━━━━━━━━━━━━━━━━━\n"
-            "**VALOR PAGO**\n"
+            "**VALOR INFORMADO**\n"
             f"# {pago}\n\n"
-            "_AURA STORE._"
+            "_Card visual para testes e estudos; não representa uma transação._"
         )
-        embed.set_footer(text=f"Feedback visual • solicitado por {interaction.user.display_name}")
+        embed.set_footer(text="Feedback visual")
         await interaction.response.send_message(embed=embed)
 
 
